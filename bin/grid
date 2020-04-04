@@ -1,0 +1,317 @@
+"use strict";
+
+const fs = require('fs');
+
+const yargs = require('yargs');
+const argv = yargs
+      .command('grid', 'Generates and solves a Jumbalaya grid')
+      .option('size', {
+	alias: 's',
+	description: 'height of the grid in tiles',
+	type: 'number'
+      })
+      .option('type', {
+	alias: 't',
+	description: 'grid type (square, tree, diamond, or hexagon)',
+	type: 'string'
+      })
+      .option('word', {
+	alias: 'w',
+	description: 'word length minimum',
+	type: 'number'
+      })
+      .option('dict', {
+	alias: 'd',
+	description: 'dictionary location',
+	type: 'string'
+      })
+      .help()
+      .version('1.0')
+      .alias('help', 'h')
+      .argv;
+
+let size = argv.size || 5;
+const type = argv.type || 'square';
+const wordMin = argv.word || 4;
+const dictPath = argv.dict || '/home/cdamon/data/etc/words';
+
+// letter distribution based on https://en.wikipedia.org/wiki/Letter_frequency
+const LETTER_DIST_WIKI = {
+  a: 82,
+  b: 15,
+  c: 22,
+  d: 43,
+  e: 127,
+  f: 22,
+  g: 20,
+  h: 61,
+  i: 70,
+  j: 2,
+  k: 13,
+  l: 40,
+  m: 24,
+  n: 67,
+  o: 75,
+  p: 19,
+  q: 1,
+  r: 60,
+  s: 63,
+  t: 94,
+  u: 27,
+  v: 10,
+  w: 26,
+  x: 2,
+  y: 20,
+  z: 1
+}
+
+// letter distribution in our word list; seems weird (more C than D? more V than W?)
+const LETTER_DIST_LIST = {
+  a: 77,
+  b: 20,
+  c: 40,
+  d: 38,
+  e: 116,
+  f: 14,
+  g: 29,
+  h: 22,
+  i: 85,
+  j: 2,
+  k: 10,
+  l: 54,
+  m: 27,
+  n: 67,
+  o: 61,
+  p: 29,
+  q: 2,
+  r: 73,
+  s: 91,
+  t: 67,
+  u: 34,
+  v: 10,
+  w: 9,
+  x: 3,
+  y: 17,
+  z: 4
+}
+
+// fudged letter distribution: a bit less heavy on the vowels
+const LETTER_DIST_CUSTOM = {
+  a: 70,
+  b: 20,
+  c: 25,
+  d: 40,
+  e: 100,
+  f: 20,
+  g: 20,
+  h: 40,
+  i: 70,
+  j: 2,
+  k: 10,
+  l: 40,
+  m: 25,
+  n: 60,
+  o: 60,
+  p: 25,
+  q: 10,
+  r: 60,
+  s: 65,
+  t: 75,
+  u: 25,
+  v: 10,
+  w: 20,
+  x: 3,
+  y: 20,
+  z: 2
+}
+
+const LETTER_DIST = LETTER_DIST_CUSTOM;
+const ALPHABET = Object.keys(LETTER_DIST).sort();
+const LETTER_DIST_SUM = Object.values(LETTER_DIST).reduce((acc, val) => acc + val, 0);
+
+const GRID_TYPE = {
+  tree: {
+    size: 7,
+    template: '---*--- --***-- --***-- -*****- -*****- ******* ---*---'
+  },
+  hexagon: {
+    size: 6,
+    template: '--**-- -****- ****** ****** -****- --**--'
+  },
+  diamond: {
+    size: 7,
+    template: '---*--- --***-- -*****- ******* -*****- --***-- ---*---'
+  }
+};
+
+/*
+ * Create and solve a Boggle grid.
+ */
+
+
+let totalLetters = 0;
+const letterCount = {};
+
+function insert(trie, word) {
+  let node = trie;
+  for (let i = 0; i < word.length; i++) {
+    const letter = word[i];
+
+    totalLetters++;
+    letterCount[letter] = letterCount[letter] ? letterCount[letter] + 1 : 1;
+    
+    if (!node.children[letter]) {
+      node.children[letter] = { letter, parent: node, children: {}, isWord: i === word.length - 1 };
+    }
+    node = node.children[letter];
+  }
+}
+
+function getRandom(max) {
+  return Math.floor(Math.random() * Math.floor(max));
+}
+
+function getLetter() {
+  const num = getRandom(LETTER_DIST_SUM);
+  let cur = 0;
+  for (let i = 0; i < ALPHABET.length; i++) {
+    const letter = ALPHABET[i];
+    if (num >= cur && num < cur + LETTER_DIST[letter]) {
+      return letter;
+    }
+    cur += LETTER_DIST[letter];
+  }
+  console.log('ERROR in getLetter, num = ' + num);
+}
+
+function helpTheQ(rows) {
+
+  for (let row = 0; row < rows.length; row++) {
+    for (let col = 0; col < rows[0].length; col++) {
+      const letter = rows[row][col];
+      if (letter === 'q') {
+	const neighbors = [];
+	for (let dx = -1; dx <= 1; dx++) {
+	  for (let dy = -1; dy <= 1; dy++) {
+	    const row1 = row + dx;
+	    const col1 = col + dy;
+	    if (row1 < 0 || row1 >= rows.length || col1 < 0 || col1 >= rows[0].length) {
+	      continue;
+	    }
+	    const neighbor = rows[row1][col1];
+	    if (neighbor === 'u') {
+	      return;
+	    }
+	    if (neighbor && !(row1 === row && col1 === col)) {
+	      neighbors.push({ row: row1, col: col1 });
+	    }
+	  }
+	}
+	const index = getRandom(neighbors.length);
+	console.log('neighbors: ' + (neighbors.join('')));
+	const which = neighbors[index];
+	if (which) {
+	  rows[which.row][which.col] = 'u';
+	}
+      }
+    }
+  }
+}
+
+function getGrid(size) {
+
+  const rows = [];
+  if (type === 'square') {
+    for (let i = 0; i < size; i++) {
+      const row = [];
+      for (let j = 0; j < size; j++) {
+	row.push(getLetter());
+      }
+      rows.push(row);
+    }
+  }
+  else {
+    size = GRID_TYPE[type].size;
+    const template = GRID_TYPE[type].template;
+    template.split(' ').forEach(line => {
+      rows.push(line.split('').map(ch => ch === '*' ? getLetter() : ch));
+    });
+  }
+
+  helpTheQ(rows);
+  
+  return rows;
+}
+
+function solve(grid, trie) {
+
+  const curWord = [];
+  const words = {};
+  const visited = [];
+
+  const findWords = (row, col, node) => {
+    
+    if (visited[row][col]) {
+      return;
+    }
+
+    const letter = grid[row][col];
+    if (!node || !node.children[letter]) {
+      return;
+    }
+    node = node.children[letter];
+
+    curWord.push(letter);
+    visited[row][col] = true;
+
+    for (let dx = -1; dx <= 1; dx++) {
+      const c = col + dx;
+      if (c < 0 || c >= size) {
+	continue;
+      }
+      for (let dy = -1; dy <= 1; dy++) {
+	const r = row + dy;
+	if (r < 0 || r >= size || (dx === 0 && dy === 0)) {
+	  continue;
+	}
+	findWords(r, c, node);
+      }
+    }
+
+    const word = curWord.join('');
+    if (node.isWord && !words[word] && word.length >= wordMin) {
+      words[word] = true;
+    }
+
+    visited[row][col] = false;
+    curWord.pop();
+  };
+
+  for (let r = 0; r < size; r++) {
+    visited[r] = [];
+    for (let c = 0; c < size; c++) {
+      visited[r][c] = false;
+    }
+  }
+  
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      findWords(r, c, trie);
+    }
+  }
+
+  return Object.keys(words).sort();
+}
+
+const dictionary = { letter: '', children: {} };
+
+fs.readFile(dictPath, 'utf8', (err, data) => {
+  if (err) {
+    throw err;
+  }
+  data.split('\n').forEach(word => insert(dictionary, word));
+  const grid = getGrid(size);
+  process.stdout.write(grid.reduce((acc, row) => [ acc, row.join('') ].join(' '), '').trim() + '\n');
+  const words = solve(grid, dictionary);
+  process.stdout.write(words.join(' ') + '\n');
+});
