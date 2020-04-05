@@ -1,3 +1,5 @@
+#! /home/cdamon/bin/node
+
 "use strict";
 
 const fs = require('fs');
@@ -181,7 +183,6 @@ function getLetter() {
     }
     cur += LETTER_DIST[letter];
   }
-  console.log('ERROR in getLetter, num = ' + num);
 }
 
 function helpTheQ(rows) {
@@ -208,7 +209,6 @@ function helpTheQ(rows) {
 	  }
 	}
 	const index = getRandom(neighbors.length);
-	console.log('neighbors: ' + (neighbors.join('')));
 	const which = neighbors[index];
 	if (which) {
 	  rows[which.row][which.col] = 'u';
