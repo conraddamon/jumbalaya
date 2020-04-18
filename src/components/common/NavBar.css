@@ -1,0 +1,23 @@
+.NavBar {
+  width: 100%;
+  display: flex;
+  margin: 15px 0;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.NavBar__Time {
+  flex: 1;
+  background-color: #ffcc66;
+  padding: 4px;
+}
+
+.NavBar__Nav {
+  flex: 4;
+  background-color: #a0b8c8;
+  padding: 4px;
+}
+
+.NavBar__Link {
+  font-weight: bold;
+}

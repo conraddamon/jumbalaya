@@ -1,0 +1,12 @@
+.Tile {
+  display: inline-block;
+  height: 38px;
+  width: 38px;
+  line-height: 38px;
+  text-align: center;
+  background-color: #ffcc00;
+  border: 1px solid black;
+  font-size: 2rem;
+  font-weight: bold;
+  padding: 3px;
+}

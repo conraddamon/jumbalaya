@@ -1,0 +1,23 @@
+body {
+  font-family: Times New Roman;
+  font-size: 1rem;
+}
+
+.PageTitle {
+  font-size: 1.5rem;
+  font-weight: bold;  
+  text-align: center;
+  margin: 8px 0;
+}
+
+.Header {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.SubHeader {
+  font-size: 1.5rem;
+  font-weight: bold;
+}    
+
+    
